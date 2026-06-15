@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi commandes — Pharmacie de Téari</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#f8f7f4;--surface:#fff;--border:#e4e2da;--border-strong:#c8c5bc;
+    --text:#1a1916;--text-muted:#6b6860;--text-hint:#9e9b93;
+    --accent:#1a5c3a;--accent-light:#e8f4ed;--radius:8px;--radius-lg:12px;
+    --s0-bg:#F1EFE8;--s0-text:#5F5E5A;--s0-icon:#888780;
+    --s1-bg:#E6F1FB;--s1-text:#0C447C;--s1-icon:#185FA5;
+    --s2-bg:#EEEDFE;--s2-text:#3C3489;--s2-icon:#534AB7;
+    --s3-bg:#EAF3DE;--s3-text:#3B6D11;--s3-icon:#3B6D11;
+    --s4-bg:#FAEEDA;--s4-text:#854F0B;--s4-icon:#BA7517;
+    --s5-bg:#FCE8F3;--s5-text:#7A1D5A;--s5-icon:#A3297A;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  .logo-text{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
+  .logo-sub{font-size:12px;color:var(--text-muted);margin-left:4px;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+  select{font-size:13px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);color:var(--text);cursor:pointer;}
+  button{font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);color:var(--text-muted);cursor:pointer;transition:background .15s,color .15s;display:inline-flex;align-items:center;gap:5px;}
+  button:hover{background:var(--bg);color:var(--text);}
+  .sync-status{font-size:11px;color:var(--text-hint);display:flex;align-items:center;gap:5px;}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--text-hint);transition:background .3s;}
+  .sync-dot.ok{background:#3B6D11}.sync-dot.err{background:#A32D2D}.sync-dot.loading{background:#BA7517;animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  main{padding:24px;max-width:1100px;margin:0 auto;}
+  .section{margin-bottom:28px;}
+  .cat-header{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;padding-left:2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+  .grid-header{display:grid;grid-template-columns:130px repeat(12,1fr);gap:2px;padding:8px 10px 4px;background:var(--bg);border-bottom:1px solid var(--border);}
+  .grid-header span{font-size:10px;font-weight:600;color:var(--text-hint);text-align:center;letter-spacing:.03em;}
+  .grid-header span.current-month{color:var(--accent);font-weight:700;}
+  .cell.current-month-col{outline:2px solid var(--accent);outline-offset:-2px;z-index:1;}
+  .cell.inactive.current-month-col{outline:2px solid rgba(26,92,58,0.2);border-radius:5px;}
+  .supplier-row{display:grid;grid-template-columns:130px repeat(12,1fr);gap:2px;padding:4px 10px;align-items:center;border-bottom:1px solid var(--border);}
+  .supplier-row:last-child{border-bottom:none;}
+  .supplier-row:hover{background:#faf9f7;}
+  .sup-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px;}
+  .cell{height:32px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .15s,transform .1s;border:1px solid transparent;font-size:14px;}
+  .cell:hover{opacity:.75;transform:scale(.96);}
+  .cell:active{transform:scale(.92);}
+  .cell.inactive{background:transparent;border-color:transparent;cursor:default;pointer-events:none;}
+  .cell.s0{background:var(--s0-bg)}.cell.s1{background:var(--s1-bg)}.cell.s2{background:var(--s2-bg)}.cell.s3{background:var(--s3-bg)}.cell.s4{background:var(--s4-bg)}.cell.s5{background:var(--s5-bg)}
+  .cell.s0 i{color:var(--s0-icon)}.cell.s1 i{color:var(--s1-icon)}.cell.s2 i{color:var(--s2-icon)}.cell.s3 i{color:var(--s3-icon)}.cell.s4 i{color:var(--s4-icon)}.cell.s5 i{color:var(--s5-icon)}
+  .cell.pick-mode{cursor:crosshair;background:var(--accent-light)!important;outline:2px dashed var(--accent);}
+  .cell.pick-mode:hover{opacity:1;transform:scale(1.04);}
+  .cell.pick-mode i{color:var(--accent)!important;}
+  .cell.del-mode{cursor:crosshair;background:#FCEBEB!important;outline:2px dashed #A32D2D;}
+  .cell.del-mode:hover{opacity:1;transform:scale(1.04);}
+  .cell.del-mode i{color:#A32D2D!important;}
+  .shift-banner{display:none;border-radius:var(--radius);padding:9px 14px;font-size:12px;margin-bottom:12px;align-items:center;gap:10px;}
+  .shift-banner.active{display:flex;}
+  .shift-banner.mode-shift{background:var(--accent-light);border:1px solid var(--accent);color:var(--accent);}
+  .shift-banner.mode-del{background:#FCEBEB;border:1px solid #A32D2D;color:#A32D2D;}
+  .shift-banner strong{font-weight:600;}
+  .shift-banner button{font-size:11px;padding:3px 10px;}
+  .shift-banner.mode-shift button{border-color:var(--accent);color:var(--accent);}
+  .shift-banner.mode-del button{border-color:#A32D2D;color:#A32D2D;}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);align-items:center;}
+  .legend-title{font-size:11px;font-weight:600;color:var(--text-muted);margin-right:4px;}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:4px 10px;border-radius:99px;}
+  .pill.s0{background:var(--s0-bg);color:var(--s0-text)}.pill.s1{background:var(--s1-bg);color:var(--s1-text)}.pill.s2{background:var(--s2-bg);color:var(--s2-text)}.pill.s3{background:var(--s3-bg);color:var(--s3-text)}.pill.s4{background:var(--s4-bg);color:var(--s4-text)}.pill.s5{background:var(--s5-bg);color:var(--s5-text)}
+  .legend-hint{font-size:11px;color:var(--text-hint);margin-left:auto;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:#fff;font-size:13px;padding:9px 18px;border-radius:var(--radius);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;z-index:100;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .modified-tag{font-size:9px;color:var(--accent);font-weight:700;margin-left:2px;}
+  .reset-sup-btn{font-size:10px;padding:2px 7px;border-color:var(--accent);color:var(--accent);background:transparent;border-radius:99px;margin-left:4px;opacity:.75;}
+  .reset-sup-btn:hover{background:var(--accent-light);opacity:1;}
+
+  /* Bulle de survol */
+  .tooltip{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius);padding:10px 13px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.1);pointer-events:none;min-width:180px;opacity:0;transition:opacity .15s;}
+  .tooltip.show{opacity:1;}
+  .tooltip-title{font-weight:600;color:var(--text);margin-bottom:6px;font-size:12px;}
+  .tooltip-row{display:flex;align-items:center;gap:6px;color:var(--text-muted);margin-top:3px;}
+  .tooltip-row i{font-size:13px;color:var(--text-hint);}
+  .tooltip-row span{color:var(--text-hint);font-style:italic;}
+  .tooltip-row .val{color:var(--text);font-style:normal;}
+
+  /* Modal de saisie */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:300;display:none;align-items:center;justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);padding:20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.15);}
+  .modal-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+  .modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
+  .modal-field{margin-bottom:12px;}
+  .modal-field label{display:block;font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:4px;}
+  .modal-field input{width:100%;font-size:13px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);color:var(--text);background:var(--bg);}
+  .modal-field input:focus{outline:2px solid var(--accent);border-color:transparent;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+  .modal-actions .btn-cancel{color:var(--text-muted);}
+  .modal-actions .btn-save{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .modal-actions .btn-save:hover{background:#145030;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <span class="logo-text">Pharmacie de Téari</span>
+    <span class="logo-sub">— Suivi commandes directes</span>
+  </div>
+  <div class="header-right">
+    <div class="sync-status">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">—</span>
+    </div>
+    <select id="yearSel" onchange="loadAll()"><option>2026</option><option>2027</option></select>
+    <button onclick="resetAll()"><i class="ti ti-refresh"></i> Réinitialiser</button>
+  </div>
+</header>
+
+<main>
+  <div class="shift-banner" id="shiftBanner">
+    <i class="ti ti-calendar-event" id="shiftBannerIcon"></i>
+    <span id="shiftBannerText">Cliquez sur le mois à partir duquel décaler</span>
+    <button onclick="cancelShift()"><i class="ti ti-x"></i> Annuler</button>
+  </div>
+  <div id="board"></div>
+  <div class="legend">
+    <span class="legend-title">Statuts :</span>
+    <span class="pill s0"><i class="ti ti-clock"></i> À commander</span>
+    <span class="pill s1"><i class="ti ti-send"></i> Commandé</span>
+    <span class="pill s2"><i class="ti ti-check"></i> Commande confirmée</span>
+    <span class="pill s3"><i class="ti ti-file-invoice"></i> Facture reçue</span>
+    <span class="pill s4"><i class="ti ti-medical-cross"></i> Créé dans Pharmaxe</span>
+    <span class="pill s5"><i class="ti ti-package"></i> Commande reçue</span>
+    <span class="legend-hint">Clic droit = décaler · Bouton <i class="ti ti-trash" style="font-size:11px"></i> = supprimer une commande</span>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<!-- Bulle de survol -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Modal de saisie des détails -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="modal-field">
+      <label><i class="ti ti-calendar"></i> Date de commande</label>
+      <input type="date" id="fieldDateCmd">
+    </div>
+    <div class="modal-field">
+      <label><i class="ti ti-file-invoice"></i> N° de facture</label>
+      <input type="text" id="fieldNumFac" placeholder="ex. FAC-2026-001">
+    </div>
+    <div class="modal-field">
+      <label><i class="ti ti-package"></i> Date de réception</label>
+      <input type="date" id="fieldDateRec">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveDetails()"><i class="ti ti-check"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WEBAPP_URL='https://script.google.com/macros/s/AKfycbzgZ0RN5_pn5S8AqhBQgqPsNGBg680AYDW8gWVQAx05D65OE0iCgoiCqO2XSF_OAo7Smg/exec';
+const MONTHS=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+const ICONS=['ti-clock','ti-send','ti-check','ti-file-invoice','ti-medical-cross','ti-package'];
+const LABELS=['À commander','Commandé','Commande confirmée','Facture reçue','Créé dans Pharmaxe','Commande reçue'];
+
+const BASE_SUPPLIERS=[
+  {name:'Pierre Fabre',cat:'Mensuel', baseMonths:[0,1,2,3,4,5,6,7,8,9,10,11]},
+  {name:'Cooper',      cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
+  {name:'Gilbert',     cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
+  {name:'Omega',       cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
+  {name:'P&G',         cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
+  {name:'URGO',        cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
+  {name:'Bayer',       cat:'Petit',   baseMonths:[0,3,6,9]},
+  {name:'Eko Friendly',cat:'Petit',   baseMonths:[0,3,6,9]},
+  {name:'Mega Pile',   cat:'Petit',   baseMonths:[0,3,6,9]},
+];
+
+// state[year][si] = { statuts:{mi:val,...}, customMonths:[...] or null }
+let state={};
+// pending = {si, mode:'shift'|'delete'} while in pick-month mode
+let pending=null;
+
+function getYear(){return document.getElementById('yearSel').value;}
+function ensureState(y,si){if(!state[y])state[y]={};if(!state[y][si])state[y][si]={statuts:{},customMonths:null};}
+function getActiveMonths(si,y){ensureState(y,si);return state[y][si].customMonths!==null?[...state[y][si].customMonths]:[...BASE_SUPPLIERS[si].baseMonths];}
+function getStatus(y,si,mi){ensureState(y,si);return state[y][si].statuts[mi]||0;}
+function isModified(y,si){ensureState(y,si);return state[y][si].customMonths!==null;}
+
+function setSyncStatus(s){document.getElementById('syncDot').className='sync-dot '+s.cls;document.getElementById('syncLabel').textContent=s.txt;}
+
+async function loadAll(){
+  setSyncStatus({cls:'loading',txt:'Chargement…'});
+  try{
+    const res=await fetch(WEBAPP_URL);
+    const rows=await res.json();
+    const y=getYear();
+    state[y]={};
+    rows.filter(r=>String(r.annee)===String(y)).forEach(r=>{
+      const si=BASE_SUPPLIERS.findIndex(s=>s.name===r.fournisseur);
+      if(si<0)return;
+      ensureState(y,si);
+      if(String(r.mois)==='months'){
+        try{state[y][si].customMonths=JSON.parse(r.statut);}catch(e){}
+      } else if(String(r.mois).startsWith('det_')){
+        const mi=parseInt(r.mois.replace('det_',''));
+        try{details[detKey(y,si,mi)]=JSON.parse(r.statut);}catch(e){}
+      } else {
+        state[y][si].statuts[parseInt(r.mois)]=parseInt(r.statut)||0;
+      }
+    });
+    setSyncStatus({cls:'ok',txt:'Synchronisé'});
+  }catch(e){setSyncStatus({cls:'err',txt:'Erreur réseau'});}
+  render();
+}
+
+async function saveStatus(y,si,mi,statut){
+  setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({annee:y,fournisseur:BASE_SUPPLIERS[si].name,mois:mi,statut:statut,offset:0})});
+    setSyncStatus({cls:'ok',txt:'Synchronisé'});
+  }catch(e){setSyncStatus({cls:'err',txt:'Erreur sauvegarde'});}
+}
+
+async function saveCustomMonths(y,si,months){
+  setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({annee:y,fournisseur:BASE_SUPPLIERS[si].name,mois:'months',statut:JSON.stringify(months),offset:0})});
+    setSyncStatus({cls:'ok',txt:'Synchronisé'});
+  }catch(e){setSyncStatus({cls:'err',txt:'Erreur sauvegarde'});}
+}
+
+async function cycleStatus(si,mi){
+  if(pending)return;
+  const y=getYear();
+  const next=(getStatus(y,si,mi)+1)%6;
+  ensureState(y,si);
+  state[y][si].statuts[mi]=next;
+  render();
+  await saveStatus(y,si,mi,next);
+}
+
+function showBanner(mode,si){
+  const banner=document.getElementById('shiftBanner');
+  const icon=document.getElementById('shiftBannerIcon');
+  const txt=document.getElementById('shiftBannerText');
+  banner.className='shift-banner active '+(mode==='shift'?'mode-shift':'mode-del');
+  icon.className=mode==='shift'?'ti ti-calendar-event':'ti ti-trash';
+  txt.innerHTML=mode==='shift'
+    ?`<strong>${BASE_SUPPLIERS[si].name}</strong> — cliquez sur le mois à partir duquel décaler`
+    :`<strong>${BASE_SUPPLIERS[si].name}</strong> — cliquez sur la commande à supprimer`;
+}
+
+// Clic droit : mode décalage
+function startShift(e,si){
+  e.preventDefault();
+  pending={si,mode:'shift'};
+  showBanner('shift',si);
+  render();
+}
+
+// Bouton corbeille : mode suppression
+function startDelete(si){
+  pending={si,mode:'delete'};
+  showBanner('delete',si);
+  render();
+}
+
+function cancelShift(){
+  pending=null;
+  document.getElementById('shiftBanner').classList.remove('active');
+  render();
+}
+
+async function resetSupplier(si){
+  const y=getYear();
+  ensureState(y,si);
+  state[y][si].customMonths=null;
+  render();
+  await saveCustomMonths(y,si,BASE_SUPPLIERS[si].baseMonths);
+  showToast(`${BASE_SUPPLIERS[si].name} : calendrier réinitialisé`);
+}
+
+async function applyShift(si,fromMonth){
+  const y=getYear();
+  ensureState(y,si);
+  const current=getActiveMonths(si,y);
+  const before=current.filter(m=>m<fromMonth);
+  const shifted=current.filter(m=>m>=fromMonth).map(m=>m+1).filter(m=>m<=11);
+  const newMonths=[...new Set([...before,...shifted])].sort((a,b)=>a-b);
+  state[y][si].customMonths=newMonths;
+  pending=null;
+  document.getElementById('shiftBanner').classList.remove('active');
+  showToast(`${BASE_SUPPLIERS[si].name} : décalé à partir de ${MONTHS[fromMonth]}`);
+  render();
+  await saveCustomMonths(y,si,newMonths);
+}
+
+async function applyDelete(si,mi){
+  const y=getYear();
+  ensureState(y,si);
+  const current=getActiveMonths(si,y);
+  const newMonths=current.filter(m=>m!==mi).sort((a,b)=>a-b);
+  state[y][si].customMonths=newMonths;
+  pending=null;
+  document.getElementById('shiftBanner').classList.remove('active');
+  showToast(`${BASE_SUPPLIERS[si].name} : commande de ${MONTHS[mi]} supprimée`);
+  render();
+  await saveCustomMonths(y,si,newMonths);
+}
+
+async function resetAll(){
+  if(!confirm('Remettre tous les statuts et décalages à zéro ?'))return;
+  const y=getYear();
+  state[y]={};
+  pending=null;
+  document.getElementById('shiftBanner').classList.remove('active');
+  render();
+  const p=[];
+  BASE_SUPPLIERS.forEach((_,si)=>{
+    p.push(saveCustomMonths(y,si,BASE_SUPPLIERS[si].baseMonths));
+    BASE_SUPPLIERS[si].baseMonths.forEach(mi=>p.push(saveStatus(y,si,mi,0)));
+  });
+  await Promise.all(p);
+  setSyncStatus({cls:'ok',txt:'Réinitialisé'});
+}
+
+function render(){
+  const y=getYear();
+  const currentMonth=new Date().getMonth();
+  const cats=[...new Set(BASE_SUPPLIERS.map(s=>s.cat))];
+  let html='';
+  cats.forEach(cat=>{
+    const sups=BASE_SUPPLIERS.map((s,i)=>({...s,idx:i})).filter(s=>s.cat===cat);
+    html+=`<div class="section"><div class="cat-header">${cat}</div><div class="card">`;
+    html+=`<div class="grid-header"><span style="text-align:left">Fournisseur</span>${MONTHS.map((m,mi)=>`<span class="${mi===currentMonth?'current-month':''}">${m}</span>`).join('')}</div>`;
+    sups.forEach(sup=>{
+      const si=sup.idx;
+      const active=getActiveMonths(si,y);
+      const inShiftMode=pending&&pending.si===si&&pending.mode==='shift';
+      const inDelMode=pending&&pending.si===si&&pending.mode==='delete';
+      html+=`<div class="supplier-row">`;
+      html+=`<div style="display:flex;align-items:center;gap:3px;">
+        <span class="sup-name" title="${sup.name}">${sup.name}</span>
+        ${isModified(y,si)?`<span class="modified-tag" title="Calendrier modifié">~</span><button class="reset-sup-btn" onclick="resetSupplier(${si})" title="Remettre le calendrier d'origine"><i class="ti ti-rotate"></i></button>`:''}
+        <button class="reset-sup-btn" onclick="startDelete(${si})" title="Supprimer une commande" style="margin-left:2px;border-color:#A32D2D;color:#A32D2D;"><i class="ti ti-trash"></i></button>
+      </div>`;
+      MONTHS.forEach((_,mi)=>{
+        const isActive=active.includes(mi);
+        const isCurrent=mi===currentMonth;
+        const colClass=isCurrent&&isActive?' current-month-col':'';
+        if(inShiftMode&&isActive){
+          html+=`<div class="cell pick-mode${colClass}" onclick="applyShift(${si},${mi})" title="Décaler à partir de ${MONTHS[mi]}">
+            <i class="ti ti-arrow-right"></i></div>`;
+        } else if(inDelMode&&isActive){
+          html+=`<div class="cell del-mode${colClass}" onclick="applyDelete(${si},${mi})" title="Supprimer la commande de ${MONTHS[mi]}">
+            <i class="ti ti-trash"></i></div>`;
+        } else if(!isActive){
+          html+=`<div class="cell inactive${colClass}"></div>`;
+        } else {
+          const st=getStatus(y,si,mi);
+          html+=`<div class="cell s${st}${colClass}"
+            onclick="if(!pending){openModal(${si},${mi});}"
+            ondblclick="if(!pending){cycleStatus(${si},${mi});}"
+            oncontextmenu="startShift(event,${si})"
+            onmouseenter="showTooltip(event,${si},${mi})"
+            onmousemove="moveTooltip(event)"
+            onmouseleave="hideTooltip()"
+            title="Clic = fiche · Double-clic = changer statut · Clic droit = décaler">
+            <i class="ti ${ICONS[st]}"></i></div>`;
+        }
+      });
+      html+=`</div>`;
+    });
+    html+=`</div></div>`;
+  });
+  document.getElementById('board').innerHTML=html;
+}
+
+// details[year][si][mi] = {dateCmd, numFac, dateRec}
+let details={};
+let modalCtx=null;
+
+function detKey(y,si,mi){return `${y}|${si}|${mi}`;}
+function getDetails(y,si,mi){return (details[detKey(y,si,mi)])||{};}
+
+async function saveDetailRow(y,si,mi,d){
+  setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({
+      annee:y,fournisseur:BASE_SUPPLIERS[si].name,
+      mois:'det_'+mi,statut:JSON.stringify(d),offset:0
+    })});
+    setSyncStatus({cls:'ok',txt:'Synchronisé'});
+  }catch(e){setSyncStatus({cls:'err',txt:'Erreur sauvegarde'});}
+}
+
+// Tooltip
+const tooltip=document.getElementById('tooltip');
+function showTooltip(e,si,mi){
+  const y=getYear();
+  const d=getDetails(y,si,mi);
+  const st=getStatus(y,si,mi);
+  const hasInfo=d.dateCmd||d.numFac||d.dateRec;
+  tooltip.innerHTML=`
+    <div class="tooltip-title">${BASE_SUPPLIERS[si].name} — ${MONTHS[mi]}</div>
+    <div class="tooltip-row"><i class="ti ti-tag"></i>${LABELS[st]}</div>
+    <div class="tooltip-row"><i class="ti ti-calendar"></i>${d.dateCmd?`<span class="val">${d.dateCmd}</span>`:'<span>Date commande —</span>'}</div>
+    <div class="tooltip-row"><i class="ti ti-file-invoice"></i>${d.numFac?`<span class="val">${d.numFac}</span>`:'<span>N° facture —</span>'}</div>
+    <div class="tooltip-row"><i class="ti ti-package"></i>${d.dateRec?`<span class="val">${d.dateRec}</span>`:'<span>Date réception —</span>'}</div>
+    <div style="font-size:10px;color:var(--text-hint);margin-top:6px;">Cliquez pour ${hasInfo?'modifier':'renseigner'}</div>
+  `;
+  tooltip.classList.add('show');
+  moveTooltip(e);
+}
+function moveTooltip(e){
+  const x=Math.min(e.clientX+12, window.innerWidth-200);
+  const y=Math.min(e.clientY+12, window.innerHeight-160);
+  tooltip.style.left=x+'px';
+  tooltip.style.top=y+'px';
+}
+function hideTooltip(){tooltip.classList.remove('show');}
+
+// Modal
+function openModal(si,mi){
+  const y=getYear();
+  const d=getDetails(y,si,mi);
+  modalCtx={si,mi,y};
+  document.getElementById('modalTitle').textContent=`${BASE_SUPPLIERS[si].name}`;
+  document.getElementById('modalSub').textContent=`Commande de ${MONTHS[mi]} ${y}`;
+  document.getElementById('fieldDateCmd').value=d.dateCmd||'';
+  document.getElementById('fieldNumFac').value=d.numFac||'';
+  document.getElementById('fieldDateRec').value=d.dateRec||'';
+  document.getElementById('modalOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('fieldDateCmd').focus(),50);
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+  modalCtx=null;
+}
+async function saveDetails(){
+  if(!modalCtx)return;
+  const {si,mi,y}=modalCtx;
+  const d={
+    dateCmd:document.getElementById('fieldDateCmd').value,
+    numFac:document.getElementById('fieldNumFac').value,
+    dateRec:document.getElementById('fieldDateRec').value,
+  };
+  details[detKey(y,si,mi)]=d;
+  closeModal();
+  showToast('Détails enregistrés');
+  await saveDetailRow(y,si,mi,d);
+}
+// Fermer modal sur clic overlay
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+// Fermer modal sur Escape
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+loadAll();
+</script>
+</body>
+</html>
