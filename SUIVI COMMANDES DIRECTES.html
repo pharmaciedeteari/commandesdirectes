@@ -116,6 +116,7 @@
       <span id="syncLabel">—</span>
     </div>
     <select id="yearSel" onchange="loadAll()"><option>2026</option><option>2027</option></select>
+    <button onclick="openManageModal()"><i class="ti ti-building-warehouse"></i> Fournisseurs</button>
     <button onclick="resetAll()"><i class="ti ti-refresh"></i> Réinitialiser</button>
   </div>
 </header>
@@ -167,13 +168,41 @@
   </div>
 </div>
 
+<!-- Modal de gestion des fournisseurs -->
+<div class="modal-overlay" id="manageOverlay">
+  <div class="modal" style="width:360px;max-height:80vh;overflow-y:auto;">
+    <div class="modal-title">Gérer les fournisseurs</div>
+    <div class="modal-sub">Ajouter ou retirer un fournisseur d'une catégorie</div>
+    <div id="manageList" style="margin-bottom:14px;"></div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;">
+      <div class="modal-field">
+        <label>Nom du fournisseur</label>
+        <input type="text" id="newSupName" placeholder="ex. Nouveau Labo">
+      </div>
+      <div class="modal-field">
+        <label>Catégorie (partie du tableau)</label>
+        <select id="newSupCat">
+          <option value="Mensuel">Mensuel</option>
+          <option value="Gros">Bi-mensuel (Gros)</option>
+          <option value="Petit">Trimestriel (Petit)</option>
+          <option value="Par groupement">Par groupement</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeManageModal()">Fermer</button>
+        <button class="btn-save" onclick="addSupplier()"><i class="ti ti-plus"></i> Ajouter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const WEBAPP_URL='https://script.google.com/macros/s/AKfycbzgZ0RN5_pn5S8AqhBQgqPsNGBg680AYDW8gWVQAx05D65OE0iCgoiCqO2XSF_OAo7Smg/exec';
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
 const ICONS=['ti-clock','ti-send','ti-check','ti-file-invoice','ti-medical-cross','ti-package'];
 const LABELS=['À commander','Commandé','Commande confirmée','Facture reçue','Créé dans Pharmaxe','Commande reçue'];
 
-const BASE_SUPPLIERS=[
+let SUPPLIERS=[
   {name:'Pierre Fabre',cat:'Mensuel', baseMonths:[0,1,2,3,4,5,6,7,8,9,10,11]},
   {name:'Cooper',      cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
   {name:'Gilbert',     cat:'Gros',    baseMonths:[0,2,4,6,8,10]},
@@ -187,6 +216,15 @@ const BASE_SUPPLIERS=[
   {name:'HALEON',      cat:'Par groupement', baseMonths:[0,3,6,9]},
 ];
 
+// Catégories disponibles et leur calendrier par défaut pour un nouveau fournisseur
+const CAT_DEFAULTS={
+  'Mensuel':[0,1,2,3,4,5,6,7,8,9,10,11],
+  'Gros':[0,2,4,6,8,10],
+  'Petit':[0,3,6,9],
+  'Par groupement':[0,3,6,9],
+};
+const CAT_LABELS={'Mensuel':'Mensuel','Gros':'Bi-mensuel (Gros)','Petit':'Trimestriel (Petit)','Par groupement':'Par groupement'};
+
 // state[year][si] = { statuts:{mi:val,...}, customMonths:[...] or null }
 let state={};
 // pending = {si, mode:'shift'|'delete'} while in pick-month mode
@@ -194,7 +232,7 @@ let pending=null;
 
 function getYear(){return document.getElementById('yearSel').value;}
 function ensureState(y,si){if(!state[y])state[y]={};if(!state[y][si])state[y][si]={statuts:{},customMonths:null};}
-function getActiveMonths(si,y){ensureState(y,si);return state[y][si].customMonths!==null?[...state[y][si].customMonths]:[...BASE_SUPPLIERS[si].baseMonths];}
+function getActiveMonths(si,y){ensureState(y,si);return state[y][si].customMonths!==null?[...state[y][si].customMonths]:[...SUPPLIERS[si].baseMonths];}
 function getStatus(y,si,mi){ensureState(y,si);return state[y][si].statuts[mi]||0;}
 function isModified(y,si){ensureState(y,si);return state[y][si].customMonths!==null;}
 
@@ -205,10 +243,20 @@ async function loadAll(){
   try{
     const res=await fetch(WEBAPP_URL);
     const rows=await res.json();
+
+    // Charger la liste des fournisseurs personnalisée si elle existe
+    const cfgRow=rows.find(r=>String(r.annee)==='CONFIG'&&r.fournisseur==='_SUPPLIERS_'&&String(r.mois)==='list');
+    if(cfgRow){
+      try{
+        const custom=JSON.parse(cfgRow.statut);
+        if(Array.isArray(custom)&&custom.length)SUPPLIERS=custom;
+      }catch(e){}
+    }
+
     const y=getYear();
     state[y]={};
     rows.filter(r=>String(r.annee)===String(y)).forEach(r=>{
-      const si=BASE_SUPPLIERS.findIndex(s=>s.name===r.fournisseur);
+      const si=SUPPLIERS.findIndex(s=>s.name===r.fournisseur);
       if(si<0)return;
       ensureState(y,si);
       if(String(r.mois)==='months'){
@@ -228,7 +276,7 @@ async function loadAll(){
 async function saveStatus(y,si,mi,statut){
   setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
   try{
-    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({annee:y,fournisseur:BASE_SUPPLIERS[si].name,mois:mi,statut:statut,offset:0})});
+    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({annee:y,fournisseur:SUPPLIERS[si].name,mois:mi,statut:statut,offset:0})});
     setSyncStatus({cls:'ok',txt:'Synchronisé'});
   }catch(e){setSyncStatus({cls:'err',txt:'Erreur sauvegarde'});}
 }
@@ -236,7 +284,7 @@ async function saveStatus(y,si,mi,statut){
 async function saveCustomMonths(y,si,months){
   setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
   try{
-    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({annee:y,fournisseur:BASE_SUPPLIERS[si].name,mois:'months',statut:JSON.stringify(months),offset:0})});
+    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({annee:y,fournisseur:SUPPLIERS[si].name,mois:'months',statut:JSON.stringify(months),offset:0})});
     setSyncStatus({cls:'ok',txt:'Synchronisé'});
   }catch(e){setSyncStatus({cls:'err',txt:'Erreur sauvegarde'});}
 }
@@ -263,8 +311,8 @@ function showBanner(mode,si){
   banner.className='shift-banner active '+(mode==='shift'?'mode-shift':'mode-del');
   icon.className=mode==='shift'?'ti ti-calendar-event':'ti ti-trash';
   txt.innerHTML=mode==='shift'
-    ?`<strong>${BASE_SUPPLIERS[si].name}</strong> — cliquez sur le mois à partir duquel décaler`
-    :`<strong>${BASE_SUPPLIERS[si].name}</strong> — cliquez sur la commande à supprimer`;
+    ?`<strong>${SUPPLIERS[si].name}</strong> — cliquez sur le mois à partir duquel décaler`
+    :`<strong>${SUPPLIERS[si].name}</strong> — cliquez sur la commande à supprimer`;
 }
 
 // Clic droit : mode décalage
@@ -293,8 +341,8 @@ async function resetSupplier(si){
   ensureState(y,si);
   state[y][si].customMonths=null;
   render();
-  await saveCustomMonths(y,si,BASE_SUPPLIERS[si].baseMonths);
-  showToast(`${BASE_SUPPLIERS[si].name} : calendrier réinitialisé`);
+  await saveCustomMonths(y,si,SUPPLIERS[si].baseMonths);
+  showToast(`${SUPPLIERS[si].name} : calendrier réinitialisé`);
 }
 
 async function applyShift(si,fromMonth){
@@ -307,7 +355,7 @@ async function applyShift(si,fromMonth){
   state[y][si].customMonths=newMonths;
   pending=null;
   document.getElementById('shiftBanner').classList.remove('active');
-  showToast(`${BASE_SUPPLIERS[si].name} : décalé à partir de ${MONTHS[fromMonth]}`);
+  showToast(`${SUPPLIERS[si].name} : décalé à partir de ${MONTHS[fromMonth]}`);
   render();
   await saveCustomMonths(y,si,newMonths);
 }
@@ -320,7 +368,7 @@ async function applyDelete(si,mi){
   state[y][si].customMonths=newMonths;
   pending=null;
   document.getElementById('shiftBanner').classList.remove('active');
-  showToast(`${BASE_SUPPLIERS[si].name} : commande de ${MONTHS[mi]} supprimée`);
+  showToast(`${SUPPLIERS[si].name} : commande de ${MONTHS[mi]} supprimée`);
   render();
   await saveCustomMonths(y,si,newMonths);
 }
@@ -333,9 +381,9 @@ async function resetAll(){
   document.getElementById('shiftBanner').classList.remove('active');
   render();
   const p=[];
-  BASE_SUPPLIERS.forEach((_,si)=>{
-    p.push(saveCustomMonths(y,si,BASE_SUPPLIERS[si].baseMonths));
-    BASE_SUPPLIERS[si].baseMonths.forEach(mi=>p.push(saveStatus(y,si,mi,0)));
+  SUPPLIERS.forEach((_,si)=>{
+    p.push(saveCustomMonths(y,si,SUPPLIERS[si].baseMonths));
+    SUPPLIERS[si].baseMonths.forEach(mi=>p.push(saveStatus(y,si,mi,0)));
   });
   await Promise.all(p);
   setSyncStatus({cls:'ok',txt:'Réinitialisé'});
@@ -344,10 +392,10 @@ async function resetAll(){
 function render(){
   const y=getYear();
   const currentMonth=new Date().getMonth();
-  const cats=[...new Set(BASE_SUPPLIERS.map(s=>s.cat))];
+  const cats=[...new Set(SUPPLIERS.map(s=>s.cat))];
   let html='';
   cats.forEach(cat=>{
-    const sups=BASE_SUPPLIERS.map((s,i)=>({...s,idx:i})).filter(s=>s.cat===cat);
+    const sups=SUPPLIERS.map((s,i)=>({...s,idx:i})).filter(s=>s.cat===cat);
     html+=`<div class="section"><div class="cat-header">${cat}</div><div class="card">`;
     html+=`<div class="grid-header"><span style="text-align:left">Fournisseur</span>${MONTHS.map((m,mi)=>`<span class="${mi===currentMonth?'current-month':''}">${m}</span>`).join('')}</div>`;
     sups.forEach(sup=>{
@@ -405,7 +453,7 @@ async function saveDetailRow(y,si,mi,d){
   setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
   try{
     await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({
-      annee:y,fournisseur:BASE_SUPPLIERS[si].name,
+      annee:y,fournisseur:SUPPLIERS[si].name,
       mois:'det_'+mi,statut:JSON.stringify(d),offset:0
     })});
     setSyncStatus({cls:'ok',txt:'Synchronisé'});
@@ -420,7 +468,7 @@ function showTooltip(e,si,mi){
   const st=getStatus(y,si,mi);
   const hasInfo=d.dateCmd||d.numFac||d.dateRec;
   tooltip.innerHTML=`
-    <div class="tooltip-title">${BASE_SUPPLIERS[si].name} — ${MONTHS[mi]}</div>
+    <div class="tooltip-title">${SUPPLIERS[si].name} — ${MONTHS[mi]}</div>
     <div class="tooltip-row"><i class="ti ti-tag"></i>${LABELS[st]}</div>
     <div class="tooltip-row"><i class="ti ti-calendar"></i>${d.dateCmd?`<span class="val">${d.dateCmd}</span>`:'<span>Date commande —</span>'}</div>
     <div class="tooltip-row"><i class="ti ti-file-invoice"></i>${d.numFac?`<span class="val">${d.numFac}</span>`:'<span>N° facture —</span>'}</div>
@@ -443,7 +491,7 @@ function openModal(si,mi){
   const y=getYear();
   const d=getDetails(y,si,mi);
   modalCtx={si,mi,y};
-  document.getElementById('modalTitle').textContent=`${BASE_SUPPLIERS[si].name}`;
+  document.getElementById('modalTitle').textContent=`${SUPPLIERS[si].name}`;
   document.getElementById('modalSub').textContent=`Commande de ${MONTHS[mi]} ${y}`;
   document.getElementById('fieldDateCmd').value=d.dateCmd||'';
   document.getElementById('fieldNumFac').value=d.numFac||'';
@@ -470,9 +518,69 @@ async function saveDetails(){
 }
 // Fermer modal sur clic overlay
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('manageOverlay').addEventListener('click',function(e){if(e.target===this)closeManageModal();});
 // Fermer modal sur Escape
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeManageModal();}});
 
+
+// ---- Gestion des fournisseurs (ajout / retrait) ----
+async function saveSuppliersConfig(){
+  setSyncStatus({cls:'loading',txt:'Sauvegarde…'});
+  try{
+    await fetch(WEBAPP_URL,{method:'POST',body:JSON.stringify({
+      annee:'CONFIG',fournisseur:'_SUPPLIERS_',mois:'list',statut:JSON.stringify(SUPPLIERS),offset:0
+    })});
+    setSyncStatus({cls:'ok',txt:'Synchronisé'});
+  }catch(e){setSyncStatus({cls:'err',txt:'Erreur sauvegarde'});}
+}
+
+function renderManageList(){
+  const cats=[...new Set(SUPPLIERS.map(s=>s.cat))];
+  let html='';
+  cats.forEach(cat=>{
+    html+=`<div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-hint);margin:10px 0 4px;">${CAT_LABELS[cat]||cat}</div>`;
+    SUPPLIERS.forEach((s,si)=>{
+      if(s.cat!==cat)return;
+      html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 2px;border-bottom:1px solid var(--border);font-size:13px;">
+        <span>${s.name}</span>
+        <button class="reset-sup-btn" style="border-color:#A32D2D;color:#A32D2D;" onclick="removeSupplier(${si})" title="Retirer ${s.name}"><i class="ti ti-trash"></i></button>
+      </div>`;
+    });
+  });
+  document.getElementById('manageList').innerHTML=html||'<div style="font-size:12px;color:var(--text-hint);">Aucun fournisseur</div>';
+}
+
+function openManageModal(){
+  renderManageList();
+  document.getElementById('manageOverlay').classList.add('show');
+}
+function closeManageModal(){
+  document.getElementById('manageOverlay').classList.remove('show');
+}
+
+async function addSupplier(){
+  const nameInput=document.getElementById('newSupName');
+  const name=nameInput.value.trim();
+  const cat=document.getElementById('newSupCat').value;
+  if(!name){showToast('Merci de saisir un nom');return;}
+  if(SUPPLIERS.some(s=>s.name.toLowerCase()===name.toLowerCase())){showToast('Ce fournisseur existe déjà');return;}
+  SUPPLIERS.push({name,cat,baseMonths:[...CAT_DEFAULTS[cat]]});
+  nameInput.value='';
+  renderManageList();
+  render();
+  await saveSuppliersConfig();
+  showToast(`${name} ajouté (${CAT_LABELS[cat]||cat})`);
+}
+
+async function removeSupplier(si){
+  const sup=SUPPLIERS[si];
+  if(!confirm(`Retirer ${sup.name} de la liste ?\n\n(L'historique déjà enregistré reste dans le Google Sheet mais ne s'affichera plus ici.)`))return;
+  SUPPLIERS.splice(si,1);
+  renderManageList();
+  render();
+  await saveSuppliersConfig();
+  showToast(`${sup.name} retiré`);
+}
 
 function showToast(msg){
   const t=document.getElementById('toast');
